@@ -1,151 +1,61 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import numpy as np
+from scipy.optimize import fsolve
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title='Mangrove Wave Attenuation Tool',
+    page_icon=':ocean:', # This is an emoji shortcode. Could be a URL too.
 )
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
-
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
-
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
-
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
 '''
-# :earth_americas: GDP dashboard
+# :ocean: Mangrove Wave Attenuation Tool
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
+Mangrove Wave Attenuation Tool is a simple interactive calculator that 
+estimates wave attenuation through mangrove forests using wave input 
+parameters. It helps visualize how mangroves reduce wave energy and 
+support coastal resilience. The wave attenuation model is based on the 
+work by Pang and Tay (https://arxiv.org/abs/2606.11653).
 '''
 
-# Add some spacing
-''
-''
+water_depth = st.number_input("Water Depth h [m]", value=1.0)
+wave_period = st.number_input("Wave Period T [s]", value=1.0)
+wave_height = st.number_input("Wave Height H [m]", value=1.0)
+gravity = st.number_input("Gravity g [m/s²]", value=9.81, disabled=True)
+wave_angular_frequency = 2*np.pi/wave_period
+wave_number = fsolve(lambda k: gravity*k*np.tanh(k*water_depth) - wave_angular_frequency**2, 1.0)
+wave_number = st.number_input("Wave Number k [1/m]", value=wave_number[0], disabled=True)
+drag_coefficient = st.number_input("Drag Coefficient Cd [-]", value=1.0)
+tree_density = st.number_input("Tree Density [trees/m²]", value=0.5)
+mangrove_belt_width = st.number_input("Mangrove Belt Width [m]", value=100.0)
+mangrove_species = st.menu_button("Mangrove Root Parameters Preset", options=["Rhizophora", "Sonneratia"])
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+tree_beta = 0.0
+tree_a0 = 0.0
+if mangrove_species == "Rhizophora":
+    tree_beta = 1.7
+    tree_a0 = 7.0
+elif mangrove_species == "Sonneratia":
+    tree_beta = 6.0
+    tree_a0 = 1.0
+tree_beta = st.number_input("Root Shape Parameters [1/m]", value=tree_beta)
+tree_a0 = st.number_input("Root Number * Root Diameter [m]", value=tree_a0)
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+# normalised KD
+def KD(k, h, a0, b):
+    kh = k*h
+    bh = b*h
+    abar = a0/bh * (1.0 - np.exp(-bh))
+    f = lambda x: (np.exp(x)-1.0)/x if np.abs(x)>0.001 else 0.5*x+1.0
+    phi = a0*h/(8*np.sinh(kh)**3) * (f(3*kh-bh) + 3*f(kh-bh) + 3*f(-kh-bh) + f(-3*kh-bh))
+    val = 2*k**2*np.tanh(kh)**2 / (kh + np.tanh(kh) - kh*np.tanh(kh)**2) * phi
+    return val
 
-countries = gdp_df['Country Code'].unique()
+wave_decay_coefficient = st.number_input("Wave decay coefficient [1/m²]", value=KD(wave_number, water_depth, tree_a0, tree_beta+0.0001))
 
-if not len(countries):
-    st.warning("Select at least one country")
+x = np.linspace(0, mangrove_belt_width, 100)
+y = wave_height/(1+wave_decay_coefficient*wave_height*x)
+df = pd.DataFrame({'Distance [m]': x, 'Wave Height [m]': y})
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+st.line_chart(df, x="Distance [m]", y="Wave Height [m]")
