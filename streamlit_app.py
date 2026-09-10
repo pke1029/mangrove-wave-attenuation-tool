@@ -89,8 +89,8 @@ col2.plotly_chart(fig)
 
 
 col21, col22 = col2.columns(2)
-col21.metric("Transmitted wave height", f"{y[-1]:.3f} m")
-col22.metric("Wave height reduction", f"{1-y[-1]/y[0]:.2f} %")
+col21.metric("Transmitted wave height", f"{y[-1]:.3f} m", delta=f"{(1-y[-1]/y[0])*100:.0f} %", delta_arrow="down")
+col22.metric("Transmitted energy", f"{0.125*1000*9.81*(y[-1]**2):.0f} Jm⁻²", delta=f"{0.125*1000*9.81*(y[0]**2-y[-1]**2):.0f} Jm⁻²", delta_arrow="down")
 
 
 def slr_sensitivity(k, h, b):
