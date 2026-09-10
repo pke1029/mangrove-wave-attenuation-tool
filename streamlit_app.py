@@ -75,7 +75,12 @@ def KD(k, h, a0, b):
     return val 
 
 wave_decay_coefficient = KD(wave_number, water_depth, 0.001*root_diameter*root_density, 1/root_height)
-col2.metric("Wave decay coefficient", f"{wave_decay_coefficient:.3f} m⁻²", border=True, help="The wave height across the beltfollows the equation H/(1+KHx)")
+col2.metric(
+    "Wave decay coefficient", 
+    f"{wave_decay_coefficient:.3f} m⁻²", 
+    border=True, 
+    help="The wave height across the beltfollows the equation H/(1+KHx)"
+)
 
 x = np.linspace(0, x_range, 101)
 y = wave_height/(1+wave_decay_coefficient*wave_height*x)
@@ -89,8 +94,20 @@ col2.plotly_chart(fig)
 
 
 col21, col22 = col2.columns(2)
-col21.metric("Transmitted wave height", f"{y[-1]:.3f} m", delta=f"{(1-y[-1]/y[0])*100:.0f} %", delta_arrow="down")
-col22.metric("Transmitted energy", f"{0.125*1000*9.81*(y[-1]**2):.0f} Jm⁻²", delta=f"{0.125*1000*9.81*(y[0]**2-y[-1]**2):.0f} Jm⁻²", delta_arrow="down")
+col21.metric(
+    "Transmitted wave", 
+    f"{y[-1]:.3f} m", 
+    delta=f"{(1-y[-1]/y[0])*100:.0f} %", 
+    delta_arrow="down", 
+    icon=":material/tsunami:"
+)
+col22.metric(
+    "Transmitted energy", 
+    f"{0.125*1000*9.81*(y[-1]**2):.0f} Jm⁻²", 
+    delta=f"{0.125*1000*9.81*(y[0]**2-y[-1]**2):.0f} Jm⁻²", 
+    delta_arrow="down", 
+    icon=":material/flash_on:"
+)
 
 
 def slr_sensitivity(k, h, b):
@@ -130,6 +147,19 @@ fig.update_layout(yaxis_title="")
 col2.plotly_chart(fig)
 
 if m > 0:
-    col2.metric("Sensitivity to SLR [%/cm]", f"{m/water_depth:.3f}", border=True, delta="Increase efficiency", delta_color="green")
+    col2.metric(
+        "Sensitivity to sea-level rise [%/cm]", 
+        f"{m/water_depth:.3f}", 
+        border=True, 
+        delta="Efficiency increase", 
+        delta_color="green"
+    )
 else:
-    col2.metric("Sensitivity to SLR [%/cm]", f"{m/water_depth:.3f}", border=True, delta="Decrease efficiency", delta_color="red", delta_arrow="down")
+    col2.metric(
+        "Sensitivity to sea-level rise [%/cm]", 
+        f"{m/water_depth:.3f}", 
+        border=True, 
+        delta="Efficiency decrease", 
+        delta_color="red", 
+        delta_arrow="down"
+    )
