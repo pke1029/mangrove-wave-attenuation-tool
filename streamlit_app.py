@@ -125,4 +125,7 @@ fig.update_layout(coloraxis_showscale=False)
 fig.update_layout(yaxis_title="")
 col2.plotly_chart(fig)
 
-col2.metric("Sensitivity to SLR [%/cm]", f"{m/water_depth:.3f}", border=True)
+if m > 0:
+    col2.metric("Sensitivity to SLR [%/cm]", f"{m/water_depth:.3f}", border=True, delta="Increase efficiency", delta_color="green")
+else:
+    col2.metric("Sensitivity to SLR [%/cm]", f"{m/water_depth:.3f}", border=True, delta="Decrease efficiency", delta_color="red", delta_arrow="down")
