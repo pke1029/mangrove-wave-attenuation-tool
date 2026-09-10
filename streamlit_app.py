@@ -25,7 +25,7 @@ col1.write("### :material/waves: Wave conditions")
 
 water_depth = col1.slider("Water depth, h [m]", 0.1, 5.0, 0.5)
 wave_height = col1.slider("Wave height, H [m]", 0.1, 2.0, 0.3)
-wave_period = col1.slider("Wave period, T [s]", 1.0, 8.0, 3.0)
+wave_period = col1.slider("Wave period, T [s]", 1.0, 20.0, 3.0)
 x_range = col1.slider("Mangrove belth width [m]", 10, 1000, 100, step=10)
 
 wave_angular_frequency = 2*np.pi/wave_period
