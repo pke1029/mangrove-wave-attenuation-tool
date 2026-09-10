@@ -21,7 +21,7 @@ st.divider()
 
 col1, col2 = st.columns(2)
 
-col1.write("### Wave conditions")
+col1.write("### :material/waves: Wave conditions")
 
 water_depth = col1.slider("Water depth, h [m]", 0.1, 5.0, 0.5)
 wave_height = col1.slider("Wave height, H [m]", 0.1, 2.0, 0.3)
@@ -32,7 +32,7 @@ wave_angular_frequency = 2*np.pi/wave_period
 wave_number = fsolve(lambda k: 9.81*k*np.tanh(k*water_depth) - wave_angular_frequency**2, 1.0)
 wave_number = wave_number[0]
 
-col1.write("### Vegetations")
+col1.write("### :material/nest_eco_leaf: Vegetations")
 
 col11, col12 = col1.columns(2)
 if col11.button("Rhizophora [1,2]", width="stretch"):
@@ -75,7 +75,7 @@ def KD(k, h, a0, b):
     return val 
 
 wave_decay_coefficient = KD(wave_number, water_depth, 0.001*root_diameter*root_density, 1/root_height)
-col2.metric("Wave decay coefficient [1/m²]", f"{wave_decay_coefficient:.3f}", border=True, help="The wave height across the beltfollows the equation H/(1+KHx)")
+col2.metric("Wave decay coefficient", f"{wave_decay_coefficient:.3f} m⁻²", border=True, help="The wave height across the beltfollows the equation H/(1+KHx)")
 
 col2.caption("Wave height across the belt [m]")
 
