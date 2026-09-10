@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-# import matplotlib.pyplot as plt
+import plotly.express as px
 from scipy.optimize import fsolve
 
 # Set the title and favicon that appear in the Browser's tab bar.
@@ -10,74 +10,60 @@ st.set_page_config(
     page_icon=':ocean:', # This is an emoji shortcode. Could be a URL too.
 )
 
-"# :ocean: Mangrove Wave Attenuation Tool v0.1"
-
-st.image("https://images.unsplash.com/photo-1589556183130-530470785fab?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+"# :ocean: Mangrove Wave Attenuation Tool v0.2"
 
 '''
-Mangrove Wave Attenuation Tool is a simple interactive calculator that 
-estimates wave attenuation through mangrove forests given wave input 
-parameters. It helps visualize how mangroves reduce wave energy and 
-support coastal resilience. The wave attenuation model is based on the 
-work by Pang and Tay (https://arxiv.org/abs/2606.11653).
+Estimate how much a mangrove belt attenuates an incoming wave, from root structure and local water conditions. 
+The wave attenuation model is based on the work by Pang and Tay (https://arxiv.org/abs/2606.11653).
 '''
 
-"### Wave conditions"
-col1, col2, col3 = st.columns(3)
-water_depth = col1.number_input("Water Depth h [m]", value=0.5)
-wave_period = col2.number_input("Wave Period T [s]", value=1.0)
-wave_height = col3.number_input("Wave Height H [m]", value=0.1)
+st.divider()
+
+col1, col2 = st.columns(2)
+
+col1.write("### Wave conditions")
+
+water_depth = col1.slider("Water depth, h [m]", 0.1, 5.0, 0.5)
+wave_height = col1.slider("Wave height, H [m]", 0.1, 2.0, 0.3)
+wave_period = col1.slider("Wave period, T [s]", 1.0, 8.0, 3.0)
+x_range = col1.slider("Mangrove belth width [m]", 10, 1000, 100, step=10)
+
 wave_angular_frequency = 2*np.pi/wave_period
 wave_number = fsolve(lambda k: 9.81*k*np.tanh(k*water_depth) - wave_angular_frequency**2, 1.0)
 wave_number = wave_number[0]
-wave_length = 2*np.pi / wave_number
-wave_length = col1.number_input("Wavelength L [m]", value=wave_length, disabled=True)
-wave_steepness =  col2.number_input("Wave Steepness H/L [-]", value=wave_height/wave_length, disabled=True)
-relative_water_depth = col3.number_input("Relative Water Depth h/L [-]", value=water_depth/wave_length, disabled=True)
 
-"### Mangrove root properties"
+col1.write("### Vegetations")
 
-"Below are suggested values obtained from literatures. Using site specific values (especially the root density which has the highest variability) yield better results."
+col11, col12 = col1.columns(2)
+if col11.button("Rhizophora [1,2]", width="stretch"):
+    st.session_state.root_diameter = 25
+    st.session_state.root_height = 0.6
+    st.session_state.root_density = 150
+if col12.button("Sonneratia [1,3]", width="stretch"):
+    st.session_state.root_diameter = 5
+    st.session_state.root_height = 0.06
+    st.session_state.root_density = 500
+if col11.button("Avicennia [4]", width="stretch"):
+    st.session_state.root_diameter = 6
+    st.session_state.root_height = 0.07
+    st.session_state.root_density = 250
 
-# is_enabled = st.toggle("Enable edit", value=False)
-df = pd.DataFrame({
-    "Species/Genus":["Rhizophora [1,3]", "Sonneratia [1,2]", "Avicennia [4]"],
-    "Root density [1/m²]": [150, 500, 250],
-    "Average root height [m]": [0.6, 0.06, 0.07],
-    "Average root diameter [m]":[0.025, 0.005, 0.006],
-    # "Enabled": [True, False, False]
-})
-df = st.data_editor(df, disabled=False, hide_index=True, num_rows="dynamic")
+root_diameter = col1.slider("Average root diameter [mm]", 0, 100, 25, key="root_diameter") 
+root_height = col1.slider("Average root height [m]", 0.01, 2.0, 0.6, key="root_height")
+root_density = col1.slider("Root density [1/m²]", 0, 2000, 150, key="root_density", step=10)
+drag_coefficient = col1.slider("Drag coefficient [-]", 0.0, 6.0, 1.0)
 
-species = df["Species/Genus"]
-df_distribution = pd.DataFrame(columns=species)
-z = np.linspace(0, 2, 101)
-for row in df.itertuples(index=False):
-    df_distribution[row[0]] = row[1] * row[3] * np.exp(-z/row[2]) 
-df_distribution["Elevation [m]"] = z
-st.line_chart(df_distribution, x="Elevation [m]", y_label="Frontal cover [m/m²]") 
-st.caption("Plot shows the frontal area distribution of each species of mangrove in terms of elevation.", text_alignment="center")
+col1.markdown(
+"""
+<small>
+[1] Horstman, Erik M., et al. "Wave attenuation in mangroves: A quantitative approach to field observations." Coastal engineering 94 (2014): 47-62. <br>
+[2] Mori, Nobuhito, et al. "Parameterization of mangrove root structure of Rhizophora stylosa in coastal hydrodynamic model." Frontiers in Built Environment 7 (2022): 782219. <br>
+[3] Liénard, Jean, et al. "Efficient three-dimensional reconstruction of aquatic vegetation geometry: Estimating morphological parameters influencing hydrodynamic drag." Estuarine, Coastal and Shelf Science 178 (2016): 77-85. <br>
+[4] Horstman, Erik M., et al. "Are flow-vegetation interactions well represented by mimics? A case study of mangrove pneumatophores." Advances in water resources 111 (2018): 360-371.
+</small>
+""", unsafe_allow_html=True
+)
 
-show_source = st.toggle("Show source", value=True)
-if show_source:
-    st.markdown(
-    """
-    <small>
-    [1] Horstman, Erik M., et al. "Wave attenuation in mangroves: A quantitative approach to field observations." Coastal engineering 94 (2014): 47-62. <br>
-    [2] Liénard, Jean, et al. "Efficient three-dimensional reconstruction of aquatic vegetation geometry: Estimating morphological parameters influencing hydrodynamic drag." Estuarine, Coastal and Shelf Science 178 (2016): 77-85. <br>
-    [3] Mori, Nobuhito, et al. "Parameterization of mangrove root structure of Rhizophora stylosa in coastal hydrodynamic model." Frontiers in Built Environment 7 (2022): 782219. <br>
-    [4] Horstman, Erik M., et al. "Are flow-vegetation interactions well represented by mimics? A case study of mangrove pneumatophores." Advances in water resources 111 (2018): 360-371.
-    </small>
-    """, unsafe_allow_html=True
-    )
-
-"### Estimated wave attenuation"
-
-# "Here we used the drag coefficient from Mendez and Losada (2004)."
-# st.latex(r"C_D = 0.47\mathrm{e}^{-0.052K_C}, \qquad K_C=\frac{uT}{D}")
-drag_coefficient = st.number_input("Drag Coefficient [-]", value=1.0)
-
-# normalised KD
 def KD(k, h, a0, b):
     kh = k*h
     bh = b*h
@@ -88,26 +74,20 @@ def KD(k, h, a0, b):
     val = val / (3*np.pi) * drag_coefficient
     return val 
 
-df_KD = pd.DataFrame({"Species/Genus":df["Species/Genus"]})
-df_KD["Wave dacay coefficient [1/m²]"] = KD(wave_number, water_depth, df["Root density [1/m²]"]*df["Average root diameter [m]"], 1/df["Average root height [m]"])
-df_KD.loc[len(df_KD)] = ["Combined", df_KD["Wave dacay coefficient [1/m²]"].sum()]
-st.table(df_KD)
+wave_decay_coefficient = KD(wave_number, water_depth, 0.001*root_diameter*root_density, 1/root_height)
+col2.metric("Wave decay coefficient [1/m²]", f"{wave_decay_coefficient:.3f}", border=True, help="The wave height across the beltfollows the equation H/(1+KHx)")
 
-x_range = st.slider("Mangrove belt width [m]", 100, 1000, 500)
+col2.caption("Wave height across the belt [m]")
 
-df_attenuation = pd.DataFrame(columns=species)
 x = np.linspace(0, x_range, 101)
-for row in df_KD.itertuples(index=False):
-    df_attenuation[row[0]] = 1/(1 + row[1] * wave_height * x)
-df_attenuation["Distance [m]"] = x
-st.line_chart(df_attenuation, x="Distance [m]", y_label="Wave attenuation factor [-]", x_label="Distance along mangrove belt [m]") 
+y = wave_height/(1+wave_decay_coefficient*wave_height*x)
+df = pd.DataFrame({"x":x, "y":y})
+col2.area_chart(df, x="x", y="y", x_label="Distance into belt [m]", y_label="", color="#008CFF37") 
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Incident wave height", f"{wave_height:.3f} m", border=True)
-col2.metric("Transmitted wave height", f"{df_attenuation["Combined"].iloc[-1]*wave_height:.3f} m", border=True)
-col3.metric("Combined height reduction", f"{1-df_attenuation["Combined"].iloc[-1]:.2f} %", border=True)
+col21, col22 = col2.columns(2)
+col21.metric("Transmitted wave", f"{y[-1]:.3f} m", border=True)
+col22.metric("Wave height reduction", f"{1-y[-1]/y[0]:.2f} %", border=True)
 
-"### Sensitivity to sea-level rise"
 
 def slr_sensitivity(k, h, b):
     kh = k*h
@@ -117,6 +97,32 @@ def slr_sensitivity(k, h, b):
     m +=  T(lambda x: np.exp(x), kh, bh) / T(lambda x: (np.exp(x)-1.0)/x, kh, bh)
     return m
 
-df["SLR sensitivity [-]"] = slr_sensitivity(wave_number, water_depth, 1/df["Average root height [m]"])
-df["Efficiency change per cm SLR [%/cm]"] = df["SLR sensitivity [-]"] / water_depth
-st.table(df[["Species/Genus", "SLR sensitivity [-]", "Efficiency change per cm SLR [%/cm]"]])
+m = slr_sensitivity(wave_number, water_depth, 1/root_height)
+t = np.arange(0, 11, 1)
+smin = np.array([0.28, 0.35, 0.44, 0.50, 0.56])
+smed = np.array([0.41, 0.48, 0.58, 0.64, 0.72])
+smax = np.array([0.60, 0.68, 0.80, 0.87, 0.97])
+data = pd.DataFrame({
+    "Scenarios":["SSP1-1.9", "SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5"],
+    "Lower":smin * m / water_depth,
+    "Median":smed * m / water_depth,
+    "Upper":smax * m / water_depth,
+})
+data["Difference"] = data["Upper"] - data["Lower"]
+# data
+fig = px.bar(
+    data, 
+    x="Scenarios", 
+    y="Difference", 
+    base="Lower",
+    orientation='v',
+    color="Upper",
+    title="Efficiency subject to sea-level rise [%/year]",
+    color_continuous_scale=px.colors.sequential.Sunset,
+    opacity=0.9
+)
+fig.update_layout(coloraxis_showscale=False)
+fig.update_layout(yaxis_title="")
+col2.plotly_chart(fig)
+
+col2.metric("Sensitivity to SLR [%/cm]", f"{m/water_depth:.3f}", border=True)
