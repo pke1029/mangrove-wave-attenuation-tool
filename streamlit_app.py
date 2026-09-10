@@ -77,16 +77,20 @@ def KD(k, h, a0, b):
 wave_decay_coefficient = KD(wave_number, water_depth, 0.001*root_diameter*root_density, 1/root_height)
 col2.metric("Wave decay coefficient", f"{wave_decay_coefficient:.3f} m⁻²", border=True, help="The wave height across the beltfollows the equation H/(1+KHx)")
 
-col2.caption("Wave height across the belt [m]")
-
 x = np.linspace(0, x_range, 101)
 y = wave_height/(1+wave_decay_coefficient*wave_height*x)
 df = pd.DataFrame({"x":x, "y":y})
-col2.area_chart(df, x="x", y="y", x_label="Distance into belt [m]", y_label="", color="#008CFF37") 
+# col2.area_chart(df, x="x", y="y", x_label="Distance into belt [m]", y_label="", color="#008CFF37") 
+fig = px.area(df, x="x", y="y")
+fig.update_layout(xaxis_title="Distance into belt [m]")
+fig.update_layout(yaxis_title="")
+fig.update_layout(title="Wave height across the belt [m]")
+col2.plotly_chart(fig)
+
 
 col21, col22 = col2.columns(2)
-col21.metric("Transmitted wave", f"{y[-1]:.3f} m", border=True)
-col22.metric("Wave height reduction", f"{1-y[-1]/y[0]:.2f} %", border=True)
+col21.metric("Transmitted wave height", f"{y[-1]:.3f} m")
+col22.metric("Wave height reduction", f"{1-y[-1]/y[0]:.2f} %")
 
 
 def slr_sensitivity(k, h, b):
